@@ -47,7 +47,7 @@ class Display_Mailchimp_Shortcode {
             add_filter( 'query_vars', array($this, 'add_query_vars') );
             
             // Add custom endpoint for single campaigns
-            add_action( 'init', array($this, 'add_endpoint') );
+            add_action('init', array($this, 'add_endpoint'));
     }
 
     /**
@@ -110,17 +110,17 @@ class Display_Mailchimp_Shortcode {
     /**
      * Format pagination links with an elipsis and and 'Previous' and 'Next' buttons
      * 
-     * @since 	1.1.0
+     * @since 1.1.0
      *
-     * @param   int     $current_page - current page
-     * @param   int     $item_count - number of items to paginate, used to calculate total number of pages
-     * @param   int     $per_page_count - number of items per page, used to calculate total number of pages
-     * @param   int     $adjacent_count - half the number of page links displayed adjacent to the current page
-     * @param   string  $page_link - pagination URL string containing %d placeholder or a callable function that accepts page number and returns page URL
-     * @param   boolean $show_prev_next - whether to show previous and next page links
-     * @return  string  $output HTML output
+     * @param    int     $current_page - current page
+     * @param    int     $item_count - number of items to paginate, used to calculate total number of pages
+     * @param    int     $per_page_count - number of items per page, used to calculate total number of pages
+     * @param    int     $adjacent_count - half the number of page links displayed adjacent to the current page
+     * @param    string  $page_link - pagination URL string containing %d placeholder or a callable function that accepts page number and returns page URL
+     * @param    boolean $show_prev_next - whether to show previous and next page links
+     * @return   string  $output HTML output
      */
-    public function get_pagination($current_page, $item_count, $per_page_count, $adjacent_count, $show_prev_next = true) {
+    public function get_pagination($current_page, $item_count, $per_page_count, $adjacent_count = 3, $show_prev_next = true) {
             global $post;
             $page_link = get_permalink($post->ID);
               
@@ -147,12 +147,12 @@ class Display_Mailchimp_Shortcode {
             
             if ($show_prev_next):
                 if ($current_page != $first_page):        
-                    $output .= '<a class="page-numbers" href="' . (sprintf($page_link, $current_page - 1)) . '">&#171;</a>';
+                    $output .= '<a class="page-numbers" href="' . ($page_link . $current_page - 1) . '">&#171;</a>';
                 endif;
             endif;
             
             if ($first_adjacent > $first_page):
-                $output .= '<a class="page-numbers" href="' . (sprintf($page_link, $first_page)) . '">' . $first_page . '</a>';
+                $output .= '<a class="page-numbers" href="' . ($page_link . $first_page) . '">' . $first_page . '</a>';
                 if ($first_adjacent > $first_page + 1) {
                     $output .= '<span class="page-numbers">...</span>';
                 }
@@ -162,7 +162,7 @@ class Display_Mailchimp_Shortcode {
                 if ($current_page == $i) {
                     $output .= '<span class="page-numbers current">' . $i . '</span>';
                 } else {
-                    $output .= '<a class="page-numbers" href="' . (sprintf($page_link, $i)) . '">' . $i . '</a>';
+                    $output .= '<a class="page-numbers" href="' . ($page_link . $i) . '">' . $i . '</a>';
                 }
             endfor;
             
@@ -171,12 +171,12 @@ class Display_Mailchimp_Shortcode {
                 if ($last_adjacent < $last_page - 1):
                     $output .= '<span class="page-numbers">...</span>';
                 endif;
-                $output .= '<a class="page-numbers" href="' . (sprintf($page_link, $last_page)) . '">' . $last_page . '</a>';
+                $output .= '<a class="page-numbers" href="' . ($page_link . $last_page) . '">' . $last_page . '</a>';
             endif;
             
             if ($show_prev_next):
                 if ($current_page != $last_page):           
-                    $output .= '<a class="page-numbers" href="' . (sprintf($page_link, $current_page + 1)) . '">&#187;</a>';
+                    $output .= '<a class="page-numbers" href="' . ($page_link . $current_page + 1) . '">&#187;</a>';
                 endif;
             endif;
 
@@ -203,6 +203,28 @@ class Display_Mailchimp_Shortcode {
 
             return $output;
     }
+    
+     /**
+     * Helper function to get URL for API to call
+     * 
+     * @since   1.1.0
+     * 
+     * @param   string  $type   `single` or `all`
+     * @return  string  $url
+     */
+    public function get_fetch_url($type) {
+            $url = '';
+            if ($type == 'single') {
+                $url = 'https://us14.api.mailchimp.com/3.0/campaigns/' . $this->campaign_id . "?apikey=" . $this->apikey;
+            } else if ($type == 'all') {
+                $qry_str = $this->return_query_string();
+                $url = 'https://us14.api.mailchimp.com/3.0/campaigns' . $qry_str;
+            }
+
+            return $url;
+    }
+    
+    
 
     /**
      * Function that establishes the shortcode and sets parameters
@@ -223,7 +245,7 @@ class Display_Mailchimp_Shortcode {
            $wporg_atts = shortcode_atts([
                'apikey' => false,
                'offset' => 0,
-               'count' => 8,
+               'count' => 10,
                'sort_field' => 'send_time',
                'sort_dir' => 'DESC',
                'list_id' => false,
@@ -236,6 +258,7 @@ class Display_Mailchimp_Shortcode {
            // Split api key to get region ID
            $api = explode("-", $wporg_atts['apikey']);
 
+           // Check to make sure the api value has two parts
            if(count($api) != 2) {
                return;
            }
@@ -244,9 +267,8 @@ class Display_Mailchimp_Shortcode {
            $wporg_atts['apikey'] = $api[0];
            // Set region
            $region = $api[1];
-
+           // Set page number
            $this->page = get_query_var('page') ? get_query_var('page') : 1;
-
 
            $wporg_atts['offset'] = (($this->page - 1) * $wporg_atts['count']);      
 
@@ -269,8 +291,8 @@ class Display_Mailchimp_Shortcode {
 
            $this->campaign_id = get_query_var('campaign') ? get_query_var('campaign') : $this->campaign_id;
 
-           if ($this->campaign_id):
-                if ($campaign = $this->fetch_campaign()):
+           if ($this->campaign_id):                
+                if ($campaign = $this->fetch_campaigns(self::get_fetch_url('single'))):
                     // Get single campaign's URL
                     $url = $campaign->long_archive_url;
                     // Generate output object
@@ -282,9 +304,22 @@ class Display_Mailchimp_Shortcode {
                 endif;    
 
            else:
-               if ($campaigns = $this->fetch_campaigns()):
-                   $pagination = ($this->paged ? $this->get_pagination($this->page, $this->total_items, $this->count, 2) : '');
-                   foreach ($campaigns as $campaign):
+               if ($campaigns_res = $this->fetch_campaigns(self::get_fetch_url('all'))):
+                   
+                    // Set total items
+                    $this->total_items = $campaigns_res->total_items;
+
+                    $numpages = ceil($this->total_items / $this->count);
+
+                    $this->offset += $numpages;
+                    if (is_null($this->max_page)) {
+                        $this->max_page = ceil($this->total_items / $this->count);
+                    }
+
+                    $campaigns = $campaigns_res->campaigns;
+
+                    $pagination = ($this->paged ? $this->get_pagination($this->page, $this->total_items, $this->count) : '');
+                    foreach ($campaigns as $campaign):
                        $list .= sprintf('<li><span class="campaign-date">%s</span> - <a href="%s" title="%s" ><strong>%s</strong></a></li>', 
                                date('F jS, Y', strtotime($campaign->send_time)),
                                self::get_newsletter_link($campaign->id), 
@@ -300,121 +335,37 @@ class Display_Mailchimp_Shortcode {
     }    
     
     /**
-     * Fetch single campaign info using Mailchimp's API
+     * Fetch campaigns or a single campaign using Mailchimp's API
      * 
      * @since:  1.0.0
      * @return  array/bool    An array of campaign info or false on failure
      */
-    public function fetch_campaign() {
+    public function fetch_campaigns($url) {
+        
             try {
-                if(!$this->apikey) {
-                    return;
-                }
-
-                $curl = curl_init();
-
-                if ($curl === false) {
-                    throw new Exception('Failed to initialize');
-                }
-
-                $url = 'https://us14.api.mailchimp.com/3.0/campaigns/' . $this->campaign_id . "?apikey=" . $this->apikey;     
-
-                curl_setopt_array($curl, [
-                    CURLOPT_RETURNTRANSFER => 1,
-                    CURLOPT_TIMEOUT => 10,
-                    CURLOPT_URL => $url,
-                ]);
-
-                $resp = curl_exec($curl);
-
-                if ($resp === false) {
-                    throw new Exception(curl_error($curl), curl_errno($curl));
-                }
-
-                $return = json_decode($resp);
-
-                if($return == false) {
-                    throw new Exception(curl_error($curl), curl_errno($curl));
-                }            
-
-                curl_close($curl);
-
-            } catch (Exception $ex) {
-                $return = false;   
-                trigger_error(sprintf(
-                        'Curl failed with error #%d: %s', 
-                        $ex->getCode(), $ex->getMessage()), 
-                        E_USER_ERROR);
-            }
-
-            return $return;        
-    }
-    
-    /**
-     * Fetch a list of campaigns using Mailchimp's API
-     * 
-     * @since: 	1.0.0
-     * @return	array/bool    An array of campaigns or false on failure
-     */
-    public function fetch_campaigns() {
-            try {
-                if(!$this->apikey) {
-                    return;
-                }
-
-                $curl = curl_init();
-
-                if ($curl === false) {
-                    throw new Exception('Failed to initialize');
-                }
-
-                $qry_str = $this->return_query_string();
-
-                $url = 'https://us14.api.mailchimp.com/3.0/campaigns' . $qry_str;
-
-
-                curl_setopt_array($curl, [
-                    CURLOPT_RETURNTRANSFER => 1,
-                    CURLOPT_TIMEOUT => 10,
-                    CURLOPT_URL => $url,
-                ]);
-
-                $resp = curl_exec($curl);
-
-                if ($resp === false) {
-                    throw new Exception(curl_error($curl), curl_errno($curl));
-                }
-
-                $result = json_decode($resp);
-
-                if($result == false) {
-                    throw new Exception(curl_error($curl), curl_errno($curl));
-                }
+                $response = wp_remote_get( $url );
                 
-                // Set total items
-                $this->total_items = $result->total_items;
+                // Check the response code
+                $response_code = wp_remote_retrieve_response_code($response);
+                $response_message = wp_remote_retrieve_response_message($response);
 
-                $numpages = ceil($result->total_items / $this->count);
-
-                $this->offset += $numpages;
-                if (is_null($this->max_page)) {
-                    $this->max_page = ceil($result->total_items / $this->count);
+                if (200 != $response_code && !empty($response_message)) {
+                    throw new Exception('Failed to fetch URL', $response_code . ": " .$response_message);
+                } elseif (200 != $response_code) {
+                    throw new Exception('Failed to fetch URL - Unknown error occurred', $response_code . ": " . $response_message);
                 }
 
-                $return = $result->campaigns;
+                $body = wp_remote_retrieve_body($response);
 
-                curl_close($curl);
+                // Translate into an object
+                $return   = json_decode($body);
 
             } catch (Exception $ex) {
                 $return = false;   
-                trigger_error(sprintf(
-                        'Curl failed with error #%d: %s', 
-                        $ex->getCode(), $ex->getMessage()), 
-                        E_USER_ERROR);
-            }
+                trigger_error($ex->getMessage() . $ex->getCode(), E_USER_ERROR);
+            }         
 
             return $return;        
     }
-     
     
 } 

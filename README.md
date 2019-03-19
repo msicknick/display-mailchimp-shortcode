@@ -24,7 +24,7 @@ To filter your results, you can add other parameters such as
 * **apikey**: **REQUIRED** [Mailchimp API Documentation](https://mailchimp.com/help/about-api-keys/)
 * **campaign_id**: if set, pulls details about a campaign
 * **offset**: number of campaigns to offset the search *(default: 0)*
-* **count**: number of campaigns to show *(default: 8)*
+* **count**: number of campaigns to show *(default: 10)*
 * **sort_field**: soft files by specific field *(default: send_time; possible: create_time, send_time)*
 * **list_id**: the unique id for the list
 * **status**: status of the campaign *(default: sent; possible: save, paused, schedule, sending, sent)*
